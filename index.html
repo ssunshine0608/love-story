@@ -19,7 +19,7 @@
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
     body { font-family: 'Noto Sans TC', sans-serif; }
 
-    /* ✅ 一屏固定：整頁不滾 */
+    /* ✅ App 模式：整頁不滾，讓卡片內滾 */
     html, body { height: 100%; }
     body { margin: 0; overflow: hidden; }
 
@@ -28,8 +28,10 @@
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
+    /* ✅ 安全區 + 動態視窗高度（保險） */
+    :root { --app-dvh: 100dvh; }
     .safe-screen {
-      height: 100dvh;
+      height: var(--app-dvh);
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
     }
@@ -39,14 +41,23 @@
 <body>
   <div id="root"></div>
 
+  <script>
+    // ✅ 修復部分手機瀏覽器 vh/dvh 亂跳：用 JS 設定更穩的高度變數
+    function setAppDVH() {
+      const h = window.innerHeight;
+      document.documentElement.style.setProperty('--app-dvh', `${h}px`);
+    }
+    setAppDVH();
+    window.addEventListener('resize', setAppDVH);
+  </script>
+
   <script type="text/babel">
     const { useState, useEffect, useMemo } = React;
 
     // =============================
-    // ✅ 題庫：關於名詮（給子筠測）共 40 題
+    // ✅ 題庫：關於名詮（給子筠測）
     // =============================
     const poolAboutChuan = [
-      // 原本題（稍微把過於露骨的用語改成含蓄版）
       { q: "下列哪一款『不是』名詮提過自己有在玩的遊戲？", a: "原神", options: ["POE", "最後紀元", "艾爾登法環", "原神"], rationale: "名詮常玩 POE 和最後紀元，原神不在他的名單內。" },
       { q: "名詮曾說過，公司案子涉及哪一個場所？", a: "墓園", options: ["醫院", "墓園", "學校", "工廠"], rationale: "就是那個夏天會讓人覺得陰涼的地方。" },
       { q: "名詮形容墓園在夏天的優點是？", a: "安靜又陰涼", options: ["安靜又陰涼", "有冷氣", "人少好停車", "視野好"], rationale: "他覺得在那裡工作的體感溫度相對舒服。" },
@@ -63,7 +74,6 @@
       { q: "名詮提過哪一個動漫梗圖的來源？", a: "刃牙", options: ["鬼滅", "刃牙", "進擊的巨人", "咒術迴戰"], rationale: "他對刃牙的梗圖似乎情有獨鍾。" },
       { q: "名詮覺得這半年來妳變成了他的？", a: "唯一且專屬的寶貝", options: ["遊戲隊友", "唯一且專屬的寶貝", "健身夥伴", "好姊妹"], rationale: "他就是這麼愛妳。" },
 
-      // 新增 25 題：對話細節＋幹話向（不含時間戳/不提交往日）
       { q: "名詮講「快睡」通常是什麼意思？", a: "關心妳也關心作息", options: ["想結束話題", "關心妳也關心作息", "在敷衍", "在生氣"], rationale: "他把睡覺當回血大招。" },
       { q: "名詮的關心通常用什麼包裝？", a: "嘴砲外殼", options: ["土味情話", "嘴砲外殼", "長文告白", "完全不說"], rationale: "外表硬，內心軟。" },
       { q: "名詮最常站在妳這邊的方式是？", a: "先陪妳同一陣線", options: ["先教訓妳", "先陪妳同一陣線", "裝沒看到", "叫妳忍"], rationale: "先挺你，再慢慢安撫。" },
@@ -91,10 +101,9 @@
     ];
 
     // =============================
-    // ✅ 題庫：關於子筠（給名詮測）共 40 題
+    // ✅ 題庫：關於子筠（給名詮測）
     // =============================
     const poolAboutYun = [
-      // 原本 15 題
       { q: "子筠被扣全勤的原因是因為遲到了多久？", a: "2 分鐘", options: ["2 分鐘", "5 分鐘", "10 分鐘", "12 分鐘"], rationale: "就是那該死的 2 分鐘，讓全勤獎金飛走了😭。" },
       { q: "子筠自稱自己是什麼大師？", a: "躺床大師", options: ["電玩大師", "躺床大師", "社畜王", "課長"], rationale: "比起電玩，她更專精於如何躺得舒服。" },
       { q: "當你提議要跑 9000 公尺時，子筠的第一反應是？", a: "覺得會死", options: ["馬上照做", "覺得會死", "無感", "很期待"], rationale: "9 公里對躺床大師來說是種酷刑。" },
@@ -111,7 +120,6 @@
       { q: "子筠實際最後跑了多少？", a: "沒跑", options: ["9 公里", "5 公里", "2 公里", "沒跑"], rationale: "嘴巴說說，身體還是很誠實地癱在床上。" },
       { q: "子筠覺得上班最需要具備的是？", a: "彈性", options: ["熱情", "彈性", "升遷", "壓力"], rationale: "她更在乎環境的靈活性而非死板的規定。" },
 
-      // 新增 25 題：對話細節＋幹話向
       { q: "子筠最常用什麼「一秒表達情緒」？", a: "貼圖", options: ["語音", "貼圖", "長文", "沉默"], rationale: "貼圖庫就是她的情緒字幕。" },
       { q: "子筠的休息技能點最滿的是？", a: "躺平", options: ["躺平", "打掃", "社交", "早起"], rationale: "躺床大師不是叫假的。" },
       { q: "子筠聽到『去跑步』最像的反應？", a: "覺得會死", options: ["很期待", "覺得會死", "無感", "立刻出門"], rationale: "她對長跑很有意見。" },
@@ -145,56 +153,54 @@
       return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
     };
 
-    // ✅ 結尾告白：保留你的語氣，但把最後一句改成更含蓄（避免過於露骨）
+    // ✅ 結尾告白（保留你內容 + 自動捲到底）
     const LyricsConfession = () => {
-  const confession = [
-    "寶貝～謝謝你在2025年與我相遇～",
-    "每次寶貝都能好好理解我的情緒、陪我一起幼稚，",
-    "即使是抱怨生活上的不開心或是煩惱，",
-    "寶貝也能替我想辦法甚至陪我一起罵🥹",
-    "遇到你我很開心很高興，",
-    "未來新的一年還要請寶貝多多指教～",
-    "我還要一直黏著你、把你寵到不行",
- "還要讓我好好的享用加熱棒和乳頭唷😍",
-    "愛你~我的可愛寶貝🥰"
-  ];
+      const confession = [
+        "寶貝～謝謝你在2025年與我相遇～",
+        "每次寶貝都能好好理解我的情緒、陪我一起幼稚，",
+        "即使是抱怨生活上的不開心或是煩惱，",
+        "寶貝也能替我想辦法甚至陪我一起罵🥹",
+        "遇到你我很開心很高興，",
+        "未來新的一年還要請寶貝多多指教～",
+        "我還要一直黏著你、把你寵到不行",
+        "還要讓我好好的享用加熱棒和乳頭唷😍",
+        "愛你~我的可愛寶貝🥰"
+      ];
 
-  const [visibleLines, setVisibleLines] = useState(0);
-  const boxRef = React.useRef(null);
+      const [visibleLines, setVisibleLines] = useState(0);
+      const boxRef = React.useRef(null);
 
-  useEffect(() => {
-    if (visibleLines < confession.length) {
-      const timer = setTimeout(() => setVisibleLines(v => v + 1), 1600);
-      return () => clearTimeout(timer);
-    }
-  }, [visibleLines]);
+      useEffect(() => {
+        if (visibleLines < confession.length) {
+          const timer = setTimeout(() => setVisibleLines(v => v + 1), 1600);
+          return () => clearTimeout(timer);
+        }
+      }, [visibleLines]);
 
-  // ✅ 每出現一行就自動捲到最下面（歌詞感）
-  useEffect(() => {
-    const el = boxRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [visibleLines]);
+      useEffect(() => {
+        const el = boxRef.current;
+        if (!el) return;
+        el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      }, [visibleLines]);
 
-  return (
-    <div
-      ref={boxRef}
-      className="mt-3 px-4 py-3 max-h-[170px] overflow-y-auto space-y-3 text-center"
-      style={{ scrollbarWidth: "none" }}
-    >
-      <style>{`div::-webkit-scrollbar{display:none;}`}</style>
-      {confession.slice(0, visibleLines).map((line, index) => (
-        <p
-          key={index}
-          className="text-white text-[11px] font-bold opacity-0 animate-[fadeIn_1s_forwards] leading-relaxed drop-shadow-sm"
+      return (
+        <div
+          ref={boxRef}
+          className="mt-3 px-4 py-3 max-h-[170px] overflow-y-auto space-y-3 text-center"
+          style={{ scrollbarWidth: "none" }}
         >
-          {line}
-        </p>
-      ))}
-    </div>
-  );
-};
-
+          <style>{`div::-webkit-scrollbar{display:none;}`}</style>
+          {confession.slice(0, visibleLines).map((line, index) => (
+            <p
+              key={index}
+              className="text-white text-[11px] font-bold opacity-0 animate-[fadeIn_1s_forwards] leading-relaxed drop-shadow-sm"
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+      );
+    };
 
     const shuffle = (array) => {
       const newArr = [...array];
@@ -237,7 +243,7 @@
         setShowSurprise(false);
 
         const pool = selectedRole === '子筠' ? poolAboutChuan : poolAboutYun;
-        const picked = shuffle(pool).slice(0, 15); // ✅ 每次抽 15 題
+        const picked = shuffle(pool).slice(0, 15);
         setPickedQuestions(picked);
 
         setView('quiz');
@@ -263,20 +269,20 @@
       const finalScore = answers.filter(a => a.isCorrect).length;
 
       return (
-        <div className={`safe-screen w-full ${themeClasses.bg} flex flex-col items-center justify-center p-3 transition-colors duration-500`}>
+        <div className={`safe-screen w-full ${themeClasses.bg} flex flex-col items-center justify-start p-3 transition-colors duration-500`}>
+          {/* ✅ 卡片：用 max-height 來保證手機不裁切 */}
           <div
             className={`w-full max-w-md bg-white rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden border ${themeClasses.card}`}
-            style={{ height: "94dvh", maxHeight: "780px" }}
+            style={{
+              maxHeight: "calc(var(--app-dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)"
+            }}
           >
-
-            {/* ✅ Header：測驗開始變薄 */}
+            {/* Header：quiz/result 變薄 */}
             <div className={`w-full bg-gradient-to-br ${themeClasses.header} text-white text-center shrink-0 shadow-lg relative ${
               (view === "quiz" || view === "result") ? "px-8 pt-5 pb-4" : "p-10"
             }`}>
-              <Icon name="heart" className="mb-2 fill-current mx-auto animate-pulse" size={(view === "quiz" || view === "result") ? 28 : 40}
- />
-              <h1 className={`${(view === "quiz" || view === "result") ? "text-xl" : "text-2xl"}
- font-black tracking-[0.2em] mb-1`}>
+              <Icon name="heart" className="mb-2 fill-current mx-auto animate-pulse" size={(view === "quiz" || view === "result") ? 28 : 40} />
+              <h1 className={`${(view === "quiz" || view === "result") ? "text-xl" : "text-2xl"} font-black tracking-[0.2em] mb-1`}>
                 愛情默契大考驗
               </h1>
               <div className="h-1 w-12 bg-white/40 mx-auto my-3 rounded-full" />
@@ -285,11 +291,8 @@
               </p>
             </div>
 
-            {/* ✅ 內容區：不滾動 */}
-            <div className={`flex-1 p-6 relative flex flex-col ${
- 		 view === "result" ? "overflow-y-auto" : "overflow-hidden"
-            }`}>
-
+            {/* ✅ 內容區：關鍵是 min-h-0 + overflow-y-auto（卡片內滾，不卡死） */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 relative">
               {view === 'landing' && (
                 <div className="h-full flex flex-col justify-between text-center text-slate-800">
                   <div className="space-y-4">
@@ -300,7 +303,6 @@
                       </p>
                       <p className="text-rose-500 font-black text-sm">答全對有獎勵😈答錯一題有懲罰😈</p>
                       <p className="mt-2 text-[12px] text-slate-500 font-black">請答題個三回阿三回！！！</p>
-
                     </div>
                   </div>
 
@@ -327,7 +329,7 @@
               )}
 
               {view === 'quiz' && pickedQuestions.length > 0 && (
-                <div className="h-full flex flex-col">
+                <div className="flex flex-col min-h-full">
                   <div className="flex items-center gap-4 px-1">
                     <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
                       <div className={`h-full ${themeClasses.progress} transition-all duration-700 ease-out`}
@@ -390,7 +392,7 @@
               )}
 
               {view === 'result' && (
-                <div className="h-full flex flex-col text-center">
+                <div className="flex flex-col min-h-full text-center">
                   <div className="space-y-6 pt-3">
                     <div className="inline-block relative mx-auto">
                       <div className="absolute inset-0 bg-yellow-400 blur-[50px] opacity-20 rounded-full animate-pulse" />
@@ -467,13 +469,12 @@
               )}
             </div>
 
-            {/* ✅ Footer：照你要求移除 Since，只留這句 */}
+            {/* Footer */}
             <div className="px-6 py-4 bg-slate-50 text-center border-t border-slate-100 shrink-0">
               <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.6em]">
                 名詮 & 子筠 ‧ Eternal Love
               </p>
             </div>
-
           </div>
         </div>
       );
