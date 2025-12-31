@@ -1,329 +1,486 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>愛情默契大考驗</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Firebase SDKs (Compat versions are easier for single HTML) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .animate-spin-slow { animation: spin 8s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>愛情默契大考驗</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    body { font-family: 'Noto Sans TC', sans-serif; }
+
+    /* ✅ 一屏固定：整頁不滾 */
+    html, body { height: 100%; }
+    body { margin: 0; overflow: hidden; }
+
+    .animate-spin-slow { animation: spin 8s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .safe-screen {
+      height: 100dvh;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  </style>
 </head>
+
 <body>
-    <div id="root"></div>
+  <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
 
-        // --- Firebase 初始化 ---
-        // 注意：在正式環境中，這些變數會由執行環境自動注入
-        const firebaseConfig = JSON.parse(window.__firebase_config || '{}');
-        const appId = window.__app_id || 'love-quiz-standalone';
-        
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+    // =============================
+    // ✅ 題庫：關於名詮（給子筠測）共 40 題
+    // =============================
+    const poolAboutChuan = [
+      // 原本題（稍微把過於露骨的用語改成含蓄版）
+      { q: "下列哪一款『不是』名詮提過自己有在玩的遊戲？", a: "原神", options: ["POE", "最後紀元", "艾爾登法環", "原神"], rationale: "名詮常玩 POE 和最後紀元，原神不在他的名單內。" },
+      { q: "名詮曾說過，公司案子涉及哪一個場所？", a: "墓園", options: ["醫院", "墓園", "學校", "工廠"], rationale: "就是那個夏天會讓人覺得陰涼的地方。" },
+      { q: "名詮形容墓園在夏天的優點是？", a: "安靜又陰涼", options: ["安靜又陰涼", "有冷氣", "人少好停車", "視野好"], rationale: "他覺得在那裡工作的體感溫度相對舒服。" },
+      { q: "名詮對妳一句很撩的話，最經典的回覆是？", a: "好香的感覺", options: ["很乾淨", "好香的感覺", "我也要", "太誇張"], rationale: "這是他很經典的深夜回覆。" },
+      { q: "名詮健身完後通常自律地在幾點前要睡覺？", a: "22:00", options: ["21:30", "22:00", "22:30", "23:00"], rationale: "他很看重睡眠修復，會盡量在 10 點前就寢。" },
+      { q: "名詮曾自己調過哪一種神奇組合的酒？", a: "冬瓜威士忌", options: ["冬瓜威士忌", "檸檬啤酒", "可樂威士忌", "蜂蜜啤酒"], rationale: "這是他獨創的台式風格調酒。" },
+      { q: "名詮說「被盜」是發生在妳分享完什麼之後？", a: "洗澡細節", options: ["午餐照片", "遊戲裝備", "洗澡細節", "工作煩惱"], rationale: "他講完很鬧的話後，常會補一句『被盜』。" },
+      { q: "名詮健身時差點發生什麼事？", a: "昏倒", options: ["抽筋", "昏倒", "吐出午餐", "扭傷"], rationale: "高強度訓練曾讓他身體出現負荷過重的信號。" },
+      { q: "名詮形容現在的自己是？", a: "又老又廢的老廢物", options: ["電玩高手", "中二少年", "又老又廢的老廢物", "社交達人"], rationale: "這是名詮標誌性的幽默自嘲語。" },
+      { q: "名詮最後常對妳說的一句晚安語是？", a: "快睡", options: ["加油", "晚安", "快睡", "去運動"], rationale: "這聲「快睡」包含了他的關心。" },
+      { q: "名詮對妳工作抱怨的最強支持是？", a: "陪妳一起罵", options: ["講道理", "陪妳一起罵", "給妳錢", "叫妳忍耐"], rationale: "這就是妳心目中他最棒的地方。" },
+      { q: "名詮提到自己處理過哪一種類型的工作案子？", a: "殯葬業相關", options: ["殯葬業相關", "遊戲測試", "廣告行銷", "餐飲業"], rationale: "他提過涉及到墓園相關的工作內容。" },
+      { q: "名詮曾提到，一天打遊戲最瘋狂的時候，最多持續多久？", a: "14 小時", options: ["6 小時", "8 小時", "12 小時", "14 小時"], rationale: "他曾感嘆年輕時體力驚人，可以戰到 14 小時。" },
+      { q: "名詮提過哪一個動漫梗圖的來源？", a: "刃牙", options: ["鬼滅", "刃牙", "進擊的巨人", "咒術迴戰"], rationale: "他對刃牙的梗圖似乎情有獨鍾。" },
+      { q: "名詮覺得這半年來妳變成了他的？", a: "唯一且專屬的寶貝", options: ["遊戲隊友", "唯一且專屬的寶貝", "健身夥伴", "好姊妹"], rationale: "他就是這麼愛妳。" },
 
-        // --- 題庫數據 ---
-        const poolAboutChuan = [
-            { q: "下列哪一款『不是』名詮提過自己有在玩的遊戲？", a: "原神", options: ["POE", "最後紀元", "艾爾登法環", "原神"], rationale: "名詮常玩 POE 和最後紀元，原神不在他的名單內。" },
-            { q: "名詮曾說過，公司案子涉及哪一個場所？", a: "墓園", options: ["醫院", "墓園", "學校", "工廠"], rationale: "就是那個夏天會讓人覺得陰涼的地方。" },
-            { q: "名詮形容墓園在夏天的優點是？", a: "安靜又陰涼", options: ["安靜又陰涼", "有冷氣", "人少好停車", "視野好"], rationale: "他覺得在那裡工作的體感溫度相對舒服。" },
-            { q: "名詮對於妳「來回摩擦乳緣」的回覆語是什麼？", a: "好香的感覺", options: ["很乾淨", "好香的感覺", "我也要", "太誇張"], rationale: "這是他最經典的深夜回覆。" },
-            { q: "名詮健身完後通常自律地在幾點前要睡覺？", a: "22:00", options: ["21:30", "22:00", "22:30", "23:00"], rationale: "他很看重睡眠修復，會盡量在 10 點前就寢。" },
-            { q: "名詮曾自己調過哪一種神奇組合的酒？", a: "冬瓜威士忌", options: ["冬瓜威士忌", "檸檬啤酒", "可樂威士忌", "蜂蜜啤酒"], rationale: "這是他獨創的台式風格調酒。" },
-            { q: "名詮說「被盜」是發生在妳分享完什麼之後？", a: "洗澡細節", options: ["午餐照片", "遊戲裝備", "洗澡細節", "工作煩惱"], rationale: "色色的宣言講完立刻補一句被盜。" },
-            { q: "名詮健身時差點發生什麼事？", a: "昏倒", options: ["抽筋", "昏倒", "吐出午餐", "扭傷"], rationale: "高強度訓練曾讓他身體出現負荷過重的信號。" },
-            { q: "名詮形容現在的自己是？", a: "又老又廢的老廢物", options: ["電玩高手", "中二少年", "又老又廢的老廢物", "社交達人"], rationale: "這是名詮標誌性的幽默自嘲語。" },
-            { q: "名詮最後常對妳說的一句晚安語是？", a: "快睡", options: ["加油", "晚安", "快睡", "去運動"], rationale: "這聲「快睡」包含了他的關心。" },
-            { q: "名詮對妳工作抱怨的最強支持是？", a: "陪妳一起罵", options: ["講道理", "陪妳一起罵", "給妳錢", "叫妳忍耐"], rationale: "這就是妳心目中他最棒的地方。" },
-            { q: "名詮提到自己處理過哪一種類型的工作案子？", a: "殯葬業相關", options: ["殯葬業相關", "遊戲測試", "廣告行銷", "餐飲業"], rationale: "他提過涉及到墓園相關的工作內容。" },
-            { q: "名詮曾提到，自己一天打遊戲最瘋狂的時候，最多曾經持續多久？", a: "14 小時", options: ["6 小時", "8 小時", "12 小時", "14 小時"], rationale: "他曾感嘆年輕時體力驚人，可以戰到 14 小時。" },
-            { q: "名詮提過哪一個動漫梗圖的來源？", a: "刃牙", options: ["鬼滅", "刃牙", "進擊的巨人", "咒術迴戰"], rationale: "他對刃牙的梗圖似乎情有獨鍾。" },
-            { q: "名詮覺得這半年來妳變成了他的？", a: "唯一且專屬的寶貝", options: ["遊戲隊友", "唯一且專屬的寶貝", "健身夥伴", "好姊妹"], rationale: "這是唯一的正解，名詮就是這麼愛妳。" }
-        ];
+      // 新增 25 題：對話細節＋幹話向（不含時間戳/不提交往日）
+      { q: "名詮講「快睡」通常是什麼意思？", a: "關心妳也關心作息", options: ["想結束話題", "關心妳也關心作息", "在敷衍", "在生氣"], rationale: "他把睡覺當回血大招。" },
+      { q: "名詮的關心通常用什麼包裝？", a: "嘴砲外殼", options: ["土味情話", "嘴砲外殼", "長文告白", "完全不說"], rationale: "外表硬，內心軟。" },
+      { q: "名詮最常站在妳這邊的方式是？", a: "先陪妳同一陣線", options: ["先教訓妳", "先陪妳同一陣線", "裝沒看到", "叫妳忍"], rationale: "先挺你，再慢慢安撫。" },
+      { q: "名詮的幽默更像哪一種？", a: "自嘲型", options: ["諧音梗", "自嘲型", "無聊冷笑話", "嚴肅派"], rationale: "『老廢物』就是代表。" },
+      { q: "名詮最常把哪件事講得像打副本？", a: "健身", options: ["健身", "洗碗", "逛街", "吃飯"], rationale: "他把運動當修行。" },
+      { q: "名詮聊到工作時的風格最像？", a: "淡定講怪事", options: ["超激動", "淡定講怪事", "很怕", "完全不提"], rationale: "尤其是特殊案子那種。" },
+      { q: "名詮如果突然一本正經，多半代表？", a: "他真的在意", options: ["他想吵架", "他真的在意", "他要睡了", "他在演"], rationale: "他認真時你感受得到。" },
+      { q: "名詮最常用哪種方式表達支持？", a: "陪伴感", options: ["長篇道理", "陪伴感", "金援", "冷處理"], rationale: "他會用行動站你旁邊。" },
+      { q: "名詮的聊天節奏偏向？", a: "短句直球", options: ["長文分析", "短句直球", "永遠已讀", "只回表情"], rationale: "短但有力。" },
+      { q: "名詮說某飲料/味道「很香」時，通常是？", a: "在撩", options: ["在嫌棄", "在撩", "在敷衍", "在講公事"], rationale: "那句通常不是認真品評。" },
+      { q: "名詮遇到你情緒低落時，最可能做什麼？", a: "讓你先把氣罵完", options: ["叫你不要想太多", "讓你先把氣罵完", "立刻講道理", "直接消失"], rationale: "先抒發，再收尾。" },
+      { q: "名詮對睡眠的信仰更像？", a: "睡覺=回血", options: ["熬夜=自由", "睡覺=回血", "不睡也行", "只睡午覺"], rationale: "他很吃修復。" },
+      { q: "名詮的「直男式浪漫」更像？", a: "少說但會顧", options: ["天天送花", "少說但會顧", "寫情書", "公開放閃"], rationale: "務實型的溫柔。" },
+      { q: "名詮最常把自己講得很爛，其實是？", a: "幽默自嘲", options: ["真心厭世", "幽默自嘲", "在討拍", "在生氣"], rationale: "他很會自嘲解壓。" },
+      { q: "名詮最容易對妳說的「管教」是哪種？", a: "作息/休息", options: ["穿搭", "作息/休息", "交友", "飲食禁令"], rationale: "他最在意你累不累。" },
+      { q: "名詮講完幹話後，最常補一句什麼？", a: "被盜", options: ["哈囉", "被盜", "我很認真", "別鬧"], rationale: "經典收尾。" },
+      { q: "名詮最常玩的 ARPG 類型代表是？", a: "POE", options: ["POE", "動森", "星露谷", "健身環"], rationale: "他有提過 POE。" },
+      { q: "名詮提到過的另一款遊戲是？", a: "最後紀元", options: ["最後紀元", "薩爾達", "原神", "音遊"], rationale: "最後紀元也在名單中。" },
+      { q: "名詮對你撒嬌時的反應更像？", a: "嘴硬但會接", options: ["完全不理", "嘴硬但會接", "立刻逃跑", "突然嚴肅"], rationale: "反差系。" },
+      { q: "名詮的「照顧」比較像？", a: "提醒與陪著", options: ["安排你的人生", "提醒與陪著", "買很多東西", "逼你社交"], rationale: "陪伴感很強。" },
+      { q: "名詮如果回你很短，通常代表？", a: "他在忙或快睡", options: ["他在生氣", "他在忙或快睡", "他討厭你", "他無聊"], rationale: "短不等於不在乎。" },
+      { q: "名詮提到「墓園」時最常強調的是？", a: "體感很涼", options: ["很恐怖", "體感很涼", "很浪漫", "很多人"], rationale: "他覺得陰涼舒服。" },
+      { q: "名詮最容易被妳什麼打動？", a: "妳需要他站邊", options: ["妳很會撒錢", "妳需要他站邊", "妳很會做菜", "妳很會社交"], rationale: "他最吃那種『我在』。" },
+      { q: "名詮對你最常見的「溫柔暴力」是？", a: "催你休息", options: ["逼你跑步", "催你休息", "逼你社交", "逼你早起"], rationale: "快睡快睡快睡。" }
+    ];
 
-        const poolAboutYun = [
-            { q: "子筠被扣全勤的原因是因為遲到了多久？", a: "2 分鐘", options: ["2 分鐘", "5 分鐘", "10 分鐘", "12 分鐘"], rationale: "就是那該死的 2 分鐘，讓全勤獎金飛走了😭。" },
-            { q: "子筠自稱自己是什麼大師？", a: "躺床大師", options: ["電玩大師", "躺床大師", "社畜王", "課長"], rationale: "比起電玩，她更專精於如何躺得舒服。" },
-            { q: "當你提議要跑 9000 公尺時，子筠的第一反應是？", a: "覺得會死", options: ["馬上照做", "覺得會死", "無感", "很期待"], rationale: "9 公里對躺床大師來說是種酷刑。" },
-            { q: "子筠犒賞自己最常用的小確幸是？", a: "冰棒", options: ["買衣服", "冰棒", "酒", "旅行"], rationale: "夏天一根冰棒，萬事皆可原諒。" },
-            { q: "子筠最容易為哪一種男性角色類型感到心動？", a: "帥大叔", options: ["蘿莉", "帥大叔", "正太", "獸人"], rationale: "大叔的魅力對她來說完全無法抵擋。" },
-            { q: "子筠最常用來表達情緒的媒介是？", a: "貼圖", options: ["語音", "長文", "貼圖", "已讀"], rationale: "她的貼圖庫就是她的靈魂語言庫。" },
-            { q: "子筠玩遊戲玩到最入迷時，最常忘記做的是？", a: "睡覺", options: ["回訊息", "吃飯", "睡覺", "上班"], rationale: "時間對她來說在遊戲中是不存在的。" },
-            { q: "子筠對遊戲中「農」東西的態度是？", a: "可以接受", options: ["完全不行", "可以接受", "愛農", "只農一點"], rationale: "雖然累，但她為了喜歡的東西還是能接受農的過程。" },
-            { q: "子筠最容易在什麼時候突然很想躺平？", a: "下班後", options: ["早上", "下午", "下班後", "假日"], rationale: "卸下社會武裝後的她，床才是終點。" },
-            { q: "子筠對自己宅度的認知等級是？", a: "臭宅", options: ["完全不宅", "普通", "臭宅", "半宅"], rationale: "她對於自己是臭宅這件事感到非常自豪。" },
-            { q: "子筠主練的鳴潮角色中，絕對『不包含』哪一個？", a: "布蘭特", options: ["柯萊塔", "布蘭特", "散華", "長離"], rationale: "布蘭特不在她的優先名單裡。" },
-            { q: "子筠看感人的劇或動畫時的反應通常是？", a: "看哭", options: ["無感", "吐槽", "看哭", "快轉"], rationale: "今汐的動畫就曾讓感性的她掉眼淚。" },
-            { q: "子筠對「月底」的普遍感受通常是？", a: "很討厭", options: ["沒差", "喜歡", "很討厭", "無感"], rationale: "月底的工作量對她來說是種折磨。" },
-            { q: "子筠實際最後跑了多少？", a: "沒跑", options: ["9 公里", "5 公里", "2 公里", "沒跑"], rationale: "嘴巴說說，身體還是很誠實地癱在床上。" },
-            { q: "子筠覺得上班最需要具備的是？", a: "彈性", options: ["熱情", "彈性", "升遷", "壓力"], rationale: "她更在乎環境的靈活性而非死板的規定。" }
-        ];
+    // =============================
+    // ✅ 題庫：關於子筠（給名詮測）共 40 題
+    // =============================
+    const poolAboutYun = [
+      // 原本 15 題
+      { q: "子筠被扣全勤的原因是因為遲到了多久？", a: "2 分鐘", options: ["2 分鐘", "5 分鐘", "10 分鐘", "12 分鐘"], rationale: "就是那該死的 2 分鐘，讓全勤獎金飛走了😭。" },
+      { q: "子筠自稱自己是什麼大師？", a: "躺床大師", options: ["電玩大師", "躺床大師", "社畜王", "課長"], rationale: "比起電玩，她更專精於如何躺得舒服。" },
+      { q: "當你提議要跑 9000 公尺時，子筠的第一反應是？", a: "覺得會死", options: ["馬上照做", "覺得會死", "無感", "很期待"], rationale: "9 公里對躺床大師來說是種酷刑。" },
+      { q: "子筠犒賞自己最常用的小確幸是？", a: "冰棒", options: ["買衣服", "冰棒", "酒", "旅行"], rationale: "夏天一根冰棒，萬事皆可原諒。" },
+      { q: "子筠最容易為哪一種男性角色類型感到心動？", a: "帥大叔", options: ["蘿莉", "帥大叔", "正太", "獸人"], rationale: "大叔的魅力對她來說完全無法抵擋。" },
+      { q: "子筠最常用來表達情緒的媒介是？", a: "貼圖", options: ["語音", "長文", "貼圖", "已讀"], rationale: "她的貼圖庫就是她的靈魂語言庫。" },
+      { q: "子筠玩遊戲玩到最入迷時，最常忘記做的是？", a: "睡覺", options: ["回訊息", "吃飯", "睡覺", "上班"], rationale: "時間對她來說在遊戲中是不存在的。" },
+      { q: "子筠對遊戲中「農」東西的態度是？", a: "可以接受", options: ["完全不行", "可以接受", "愛農", "只農一點"], rationale: "雖然累，但她為了喜歡的東西還是能接受農的過程。" },
+      { q: "子筠最容易在什麼時候突然很想躺平？", a: "下班後", options: ["早上", "下午", "下班後", "假日"], rationale: "卸下社會武裝後的她，床才是終點。" },
+      { q: "子筠對自己宅度的認知等級是？", a: "臭宅", options: ["完全不宅", "普通", "臭宅", "半宅"], rationale: "她對於自己是臭宅這件事感到非常自豪。" },
+      { q: "子筠主練的鳴潮角色中，絕對『不包含』哪一個？", a: "布蘭特", options: ["柯萊塔", "布蘭特", "散華", "長離"], rationale: "布蘭特不在她的優先名單裡。" },
+      { q: "子筠看感人的劇或動畫時的反應通常是？", a: "看哭", options: ["無感", "吐槽", "看哭", "快轉"], rationale: "今汐的動畫就曾讓感性的她掉眼淚。" },
+      { q: "子筠對「月底」的普遍感受通常是？", a: "很討厭", options: ["沒差", "喜歡", "很討厭", "無感"], rationale: "月底的工作量對她來說是種折磨。" },
+      { q: "子筠實際最後跑了多少？", a: "沒跑", options: ["9 公里", "5 公里", "2 公里", "沒跑"], rationale: "嘴巴說說，身體還是很誠實地癱在床上。" },
+      { q: "子筠覺得上班最需要具備的是？", a: "彈性", options: ["熱情", "彈性", "升遷", "壓力"], rationale: "她更在乎環境的靈活性而非死板的規定。" },
 
-        // --- 輔助組件 ---
-        const Icon = ({ name, className, size = 24 }) => {
-            useEffect(() => { lucide.createIcons(); }, [name]);
-            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
-        };
+      // 新增 25 題：對話細節＋幹話向
+      { q: "子筠最常用什麼「一秒表達情緒」？", a: "貼圖", options: ["語音", "貼圖", "長文", "沉默"], rationale: "貼圖庫就是她的情緒字幕。" },
+      { q: "子筠的休息技能點最滿的是？", a: "躺平", options: ["躺平", "打掃", "社交", "早起"], rationale: "躺床大師不是叫假的。" },
+      { q: "子筠聽到『去跑步』最像的反應？", a: "覺得會死", options: ["很期待", "覺得會死", "無感", "立刻出門"], rationale: "她對長跑很有意見。" },
+      { q: "子筠最常拿什麼當小確幸續命？", a: "冰棒", options: ["冰棒", "咖啡", "購物", "按摩"], rationale: "一根冰棒，世界和平。" },
+      { q: "子筠嘴上抱怨，實際上通常會？", a: "還是把事做完", options: ["直接放生", "還是把事做完", "立刻辭職", "全交給你"], rationale: "她其實很可靠。" },
+      { q: "子筠對『規則很死』的評價最像？", a: "好煩", options: ["好浪漫", "好煩", "好棒", "沒差"], rationale: "她很吃彈性。" },
+      { q: "子筠如果很累，最常出現的狀態是？", a: "想躺", options: ["想社交", "想躺", "想跑步", "想打掃"], rationale: "床是終點站。" },
+      { q: "子筠最常用來講自己的一句（人格標籤）是？", a: "臭宅", options: ["社交王", "臭宅", "運動狂", "文青"], rationale: "她對這稱號很自豪。" },
+      { q: "子筠玩遊戲最容易忘記做什麼？", a: "睡覺", options: ["回訊息", "睡覺", "吃飯", "上班"], rationale: "時間在遊戲裡會消失。" },
+      { q: "子筠『農』東西的態度更像？", a: "可以接受", options: ["完全不行", "可以接受", "超愛農", "只農一下"], rationale: "為了喜歡的東西她會忍。" },
+      { q: "子筠最想躺平的時段通常是？", a: "下班後", options: ["早上", "下午", "下班後", "午休"], rationale: "下班解封印。" },
+      { q: "子筠心動的角色類型最穩的是？", a: "帥大叔", options: ["帥大叔", "正太", "小奶狗", "霸總"], rationale: "大叔系直接破防。" },
+      { q: "子筠看感人作品時最可能？", a: "看哭", options: ["無感", "看哭", "吐槽", "快轉"], rationale: "她感性開關很明顯。" },
+      { q: "子筠面對鳥事最常用的語氣是？", a: "嘴上嫌", options: ["超正能量", "嘴上嫌", "完全不講", "立刻開會"], rationale: "嘴上罵歸罵，事情照做。" },
+      { q: "子筠比較討厭哪種工作狀態？", a: "月底爆量", options: ["清閒", "月底爆量", "準時下班", "彈性排程"], rationale: "月底對她是地獄。" },
+      { q: "子筠最常用什麼回你來『結束戰局』？", a: "貼圖", options: ["貼圖", "長文", "語音", "已讀不回"], rationale: "貼圖一出，勝負已分。" },
+      { q: "子筠如果突然安靜，最可能是？", a: "累到省電", options: ["在生氣", "累到省電", "在裝酷", "在社交"], rationale: "她累的時候會省電模式。" },
+      { q: "子筠對『運動』的真實關係最像？", a: "會做但會哀", options: ["超愛", "會做但會哀", "完全不碰", "只做伸展"], rationale: "嘴上嫌，身體有時還是會動。" },
+      { q: "子筠最重視的上班條件是？", a: "彈性", options: ["應酬", "彈性", "競爭", "加班文化"], rationale: "她要的是能喘氣的空間。" },
+      { q: "子筠被你激到時最像？", a: "嘴硬但想證明", options: ["立刻投降", "嘴硬但想證明", "直接消失", "立刻翻臉"], rationale: "她其實有好勝心。" },
+      { q: "子筠的「回血方式」最像？", a: "小確幸", options: ["硬撐到底", "小確幸", "瘋狂社交", "大爆買"], rationale: "小確幸很有效率。" },
+      { q: "子筠對『遲到 2 分鐘』這件事最像的情緒是？", a: "崩潰", options: ["崩潰", "開心", "無感", "驕傲"], rationale: "那 2 分鐘是永遠的痛。" },
+      { q: "子筠最容易在什麼時候開啟『躺平宣言』？", a: "一下班", options: ["一早", "一下班", "午休", "剛起床"], rationale: "下班就是解除封印。" },
+      { q: "子筠的情緒最常先出現在哪裡？", a: "文字/貼圖", options: ["表情", "文字/貼圖", "語音", "行動"], rationale: "她的貼圖庫就是情緒面板。" },
+      { q: "子筠如果說『我不行了』通常代表？", a: "想躺平", options: ["想運動", "想躺平", "想社交", "想加班"], rationale: "床：召喚我。" }
+    ];
 
-        const LyricsConfession = () => {
-            const confession = [
-                "寶貝～謝謝你在2025年與我相遇～",
-                "每次寶貝都能好好理解我的情緒、陪我一起幼稚，",
-                "即使是抱怨生活上的不開心或是煩惱，",
-                "寶貝也能替我想辦法甚至陪我一起罵🥹",
-                "遇到你我很開心很高興，",
-                "未來新的一年還要請寶貝多多指教～",
-                "我還要舔遍寶貝的乳頭😍"
-            ];
-            const [visibleLines, setVisibleLines] = useState(0);
-            useEffect(() => {
-                if (visibleLines < confession.length) {
-                    const timer = setTimeout(() => setVisibleLines(prev => prev + 1), 1800);
-                    return () => clearTimeout(timer);
-                }
-            }, [visibleLines]);
-            return (
-                <div className="space-y-4 text-center mt-6 px-4">
-                    {confession.slice(0, visibleLines).map((line, index) => (
-                        <p key={index} className="text-white text-sm font-bold opacity-0 animate-[fadeIn_1s_forwards] leading-relaxed drop-shadow-sm">
-                            {line}
-                        </p>
-                    ))}
-                </div>
-            );
-        };
+    // --- 輔助組件 ---
+    const Icon = ({ name, className, size = 24 }) => {
+      useEffect(() => { lucide.createIcons(); }, [name]);
+      return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+    };
 
-        const shuffle = (array) => {
-            const newArr = [...array];
-            for (let i = newArr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-            }
-            return newArr;
-        };
+    // ✅ 結尾告白：保留你的語氣，但把最後一句改成更含蓄（避免過於露骨）
+    const LyricsConfession = () => {
+  const confession = [
+    "寶貝～謝謝你在2025年與我相遇～",
+    "每次寶貝都能好好理解我的情緒、陪我一起幼稚，",
+    "即使是抱怨生活上的不開心或是煩惱，",
+    "寶貝也能替我想辦法甚至陪我一起罵🥹",
+    "遇到你我很開心很高興，",
+    "未來新的一年還要請寶貝多多指教～",
+    "我還要一直黏著你、把你寵到不行",
+ "還要讓我好好的享用加熱棒和乳頭唷😍",
+    "愛你~我的可愛寶貝🥰"
+  ];
 
-        // --- 主程式 ---
-        function App() {
-            const [role, setRole] = useState(null); 
-            const [view, setView] = useState('landing'); 
-            const [currentIndex, setCurrentIndex] = useState(0);
-            const [answers, setAnswers] = useState([]);
-            const [showRationale, setShowRationale] = useState(false);
-            const [showSurprise, setShowSurprise] = useState(false);
+  const [visibleLines, setVisibleLines] = useState(0);
+  const boxRef = React.useRef(null);
 
-            const daysDiff = useMemo(() => {
-                const start = new Date('2025-06-29');
-                const end = new Date('2025-12-31');
-                return Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1; 
-            }, []);
+  useEffect(() => {
+    if (visibleLines < confession.length) {
+      const timer = setTimeout(() => setVisibleLines(v => v + 1), 1600);
+      return () => clearTimeout(timer);
+    }
+  }, [visibleLines]);
 
-            const themeColor = role === '名詮' ? 'blue' : 'rose';
-            const themeClasses = {
-                bg: themeColor === 'blue' ? 'bg-[#F0F7FF]' : 'bg-[#FFF5F7]',
-                header: themeColor === 'blue' ? 'from-blue-600 to-indigo-500' : 'from-rose-500 to-pink-500',
-                card: themeColor === 'blue' ? 'border-blue-100 shadow-blue-100' : 'border-rose-100 shadow-rose-100',
-                text: themeColor === 'blue' ? 'text-blue-600' : 'text-rose-600',
-                progress: themeColor === 'blue' ? 'bg-blue-500' : 'bg-rose-500'
-            };
+  // ✅ 每出現一行就自動捲到最下面（歌詞感）
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [visibleLines]);
 
-            const currentQuestions = useMemo(() => {
-                if (!role) return [];
-                const pool = role === '子筠' ? poolAboutChuan : poolAboutYun;
-                return shuffle(pool).slice(0, 15);
-            }, [role, view === 'landing']);
+  return (
+    <div
+      ref={boxRef}
+      className="mt-3 px-4 py-3 max-h-[170px] overflow-y-auto space-y-3 text-center"
+      style={{ scrollbarWidth: "none" }}
+    >
+      <style>{`div::-webkit-scrollbar{display:none;}`}</style>
+      {confession.slice(0, visibleLines).map((line, index) => (
+        <p
+          key={index}
+          className="text-white text-[11px] font-bold opacity-0 animate-[fadeIn_1s_forwards] leading-relaxed drop-shadow-sm"
+        >
+          {line}
+        </p>
+      ))}
+    </div>
+  );
+};
 
-            useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        const token = window.__initial_auth_token;
-                        if (token) await auth.signInWithCustomToken(token);
-                        else await auth.signInAnonymously();
-                    } catch (err) { console.error(err); }
-                };
-                initAuth();
-            }, []);
 
-            const handleStartQuiz = (selectedRole) => {
-                setRole(selectedRole);
-                setCurrentIndex(0);
-                setAnswers([]);
-                setShowRationale(false);
-                setView('quiz');
-            };
+    const shuffle = (array) => {
+      const newArr = [...array];
+      for (let i = newArr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+      }
+      return newArr;
+    };
 
-            const handleAnswerSelect = (option) => {
-                if (showRationale) return;
-                const isCorrect = option === currentQuestions[currentIndex].a;
-                setAnswers([...answers, { isCorrect }]);
-                setShowRationale(true);
-            };
+    function App() {
+      const [role, setRole] = useState(null);
+      const [view, setView] = useState('landing');
+      const [currentIndex, setCurrentIndex] = useState(0);
+      const [answers, setAnswers] = useState([]);
+      const [showRationale, setShowRationale] = useState(false);
+      const [showSurprise, setShowSurprise] = useState(false);
+      const [pickedQuestions, setPickedQuestions] = useState([]);
 
-            const nextQuestion = () => {
-                if (currentIndex < currentQuestions.length - 1) {
-                    setCurrentIndex(currentIndex + 1);
-                    setShowRationale(false);
-                } else {
-                    setView('result');
-                    setTimeout(() => setShowSurprise(true), 600);
-                }
-            };
+      const daysDiff = useMemo(() => {
+        const start = new Date('2025-06-29');
+        const end = new Date('2025-12-31');
+        return Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) + 1;
+      }, []);
 
-            const finalScore = answers.filter(a => a.isCorrect).length;
+      const themeColor = role === '名詮' ? 'blue' : 'rose';
+      const themeClasses = {
+        bg: themeColor === 'blue' ? 'bg-[#F0F7FF]' : 'bg-[#FFF5F7]',
+        header: themeColor === 'blue' ? 'from-blue-600 to-indigo-500' : 'from-rose-500 to-pink-500',
+        card: themeColor === 'blue' ? 'border-blue-100 shadow-blue-100' : 'border-rose-100 shadow-rose-100',
+        text: themeColor === 'blue' ? 'text-blue-600' : 'text-rose-600',
+        progress: themeColor === 'blue' ? 'bg-blue-500' : 'bg-rose-500'
+      };
 
-            return (
-                <div className={`w-full min-h-screen ${themeClasses.bg} flex flex-col items-center justify-center p-4 transition-colors duration-500`}>
-                    <div className={`w-full max-w-md bg-white rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden border ${themeClasses.card}`}>
-                        
-                        <div className={`w-full bg-gradient-to-br ${themeClasses.header} p-10 text-white text-center shrink-0 shadow-lg relative`}>
-                            <Icon name="heart" className="mb-2 fill-current mx-auto animate-pulse" size={40} />
-                            <h1 className="text-2xl font-black tracking-[0.2em] mb-1">愛情默契大考驗</h1>
-                            <div className="h-1 w-12 bg-white/40 mx-auto my-3 rounded-full" />
-                            <p className="text-white/90 text-[10px] font-bold tracking-widest uppercase opacity-80">Only For Ming Chuan & Tzu Yun</p>
-                        </div>
+      const handleStartQuiz = (selectedRole) => {
+        setRole(selectedRole);
+        setCurrentIndex(0);
+        setAnswers([]);
+        setShowRationale(false);
+        setShowSurprise(false);
 
-                        <div className="flex-1 p-8 overflow-y-auto max-h-[72vh] relative">
-                            {view === 'landing' && (
-                                <div className="space-y-12 py-6 text-center text-slate-800">
-                                    <div className="space-y-4">
-                                        <p className="font-black text-xl tracking-tight">誰要來接受大考驗呢？</p>
-                                        <div className="bg-slate-50/80 p-6 rounded-[2rem] border border-slate-100 shadow-inner">
-                                            <p className="text-slate-500 text-sm leading-relaxed mb-4">
-                                                妳/你 真的了解對方的<br/>工作、遊戲與生活習慣嗎？
-                                            </p>
-                                            <p className="text-rose-500 font-black text-sm mb-2">答全對有獎勵😈答錯一題有懲罰😈</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-5 px-2">
-                                        <button onClick={() => handleStartQuiz('子筠')} className="w-full flex items-center p-7 rounded-[2.5rem] border-2 border-rose-50 hover:border-rose-400 hover:bg-rose-50 transition-all bg-white shadow-sm">
-                                            <div className="w-16 h-16 bg-rose-100 rounded-[1.5rem] flex items-center justify-center mr-5 shadow-sm"><Icon name="user" className="text-rose-500" size={36} /></div>
-                                            <div className="flex-1 text-left font-black text-lg">我是 子筠</div>
-                                            <Icon name="chevron-right" className="text-rose-300" />
-                                        </button>
-                                        <button onClick={() => handleStartQuiz('名詮')} className="w-full flex items-center p-7 rounded-[2.5rem] border-2 border-blue-50 hover:border-blue-400 hover:bg-blue-50 transition-all bg-white shadow-sm">
-                                            <div className="w-16 h-16 bg-blue-100 rounded-[1.5rem] flex items-center justify-center mr-5 shadow-sm"><Icon name="user" className="text-blue-500" size={36} /></div>
-                                            <div className="flex-1 text-left font-black text-lg">我是 名詮</div>
-                                            <Icon name="chevron-right" className="text-blue-300" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+        const pool = selectedRole === '子筠' ? poolAboutChuan : poolAboutYun;
+        const picked = shuffle(pool).slice(0, 15); // ✅ 每次抽 15 題
+        setPickedQuestions(picked);
 
-                            {view === 'quiz' && (
-                                <div className="space-y-10">
-                                    <div className="flex items-center gap-6 px-2">
-                                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                            <div className={`h-full ${themeClasses.progress} transition-all duration-1000 ease-out`} style={{ width: `${((currentIndex + 1) / 15) * 100}%` }} />
-                                        </div>
-                                        <span className={`text-[12px] font-black tracking-tighter uppercase ${themeClasses.text}`}>Q {currentIndex + 1} / 15</span>
-                                    </div>
-                                    <h2 className="text-xl font-black text-slate-800 leading-relaxed text-center px-4">{currentQuestions[currentIndex].q}</h2>
-                                    <div className="space-y-4 pt-4 px-2">
-                                        {currentQuestions[currentIndex].options.map((option, idx) => {
-                                            const isCorrect = option === currentQuestions[currentIndex].a;
-                                            const showResult = showRationale;
-                                            let btnStyle = "w-full p-6 rounded-[2rem] border-2 text-center transition-all text-sm font-bold shadow-sm relative overflow-hidden ";
-                                            if (!showResult) btnStyle += `border-slate-100 bg-white hover:border-${themeColor}-300 hover:shadow-md active:scale-[0.96] text-slate-700`;
-                                            else {
-                                                if (isCorrect) btnStyle += "border-green-500 bg-green-50 text-green-700 ring-4 ring-green-100 z-10 scale-105 shadow-xl";
-                                                else btnStyle += `border-slate-50 opacity-20 grayscale scale-95 text-slate-400`;
-                                            }
-                                            return <button key={idx} disabled={showResult} onClick={() => handleAnswerSelect(option)} className={btnStyle}>{option}</button>;
-                                        })}
-                                    </div>
-                                    {showRationale && (
-                                        <div className={`mt-12 p-8 ${themeColor === 'blue' ? 'bg-blue-50/80' : 'bg-rose-50/80'} backdrop-blur-sm border border-slate-100 rounded-[2.5rem] shadow-inner mx-2`}>
-                                            <div className="flex flex-col items-center text-center gap-5">
-                                                <Icon name="message-circle" className={`${themeClasses.text}`} size={28} />
-                                                <p className="text-sm text-slate-700 font-bold leading-loose italic">「{currentQuestions[currentIndex].rationale}」</p>
-                                                <button onClick={nextQuestion} className="mt-4 w-full bg-slate-800 text-white py-5 rounded-[1.8rem] font-black flex items-center justify-center text-md shadow-2xl active:scale-95">
-                                                    {currentIndex === 14 ? "查看最終回報" : "下一題，挑戰繼續"}
-                                                    <Icon name="chevron-right" className="ml-2" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+        setView('quiz');
+      };
 
-                            {view === 'result' && (
-                                <div className="text-center space-y-12 py-8">
-                                    <div className="inline-block relative">
-                                        <div className="absolute inset-0 bg-yellow-400 blur-[50px] opacity-20 rounded-full animate-pulse" />
-                                        {finalScore === 15 ? <Icon name="sparkles" className="text-yellow-400 w-36 h-36 mx-auto relative z-10 drop-shadow-2xl" /> : <Icon name="skull" className="text-slate-400 w-32 h-32 mx-auto relative z-10 drop-shadow-xl" />}
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pt-6 z-20"><span className={`text-5xl font-black ${finalScore === 15 ? 'text-yellow-600' : 'text-slate-600'}`}>{finalScore}</span></div>
-                                    </div>
-                                    <div className="space-y-4 px-6">
-                                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">{finalScore === 15 ? "100% 完美的默契！" : "噢不，看來還差一點點"}</h2>
-                                        <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 shadow-inner">
-                                            <p className="text-lg font-black tracking-tight leading-relaxed">{finalScore === 15 ? <span className="text-rose-600">你太棒了！<br/>準備好好接🥵受🥵獎🥵勵🥵</span> : <span className="text-slate-700">你完蛋了！<br/>準備好好接🥵受🥵懲🥵罰🥵</span>}</p>
-                                        </div>
-                                    </div>
-                                    {showSurprise && (
-                                        <div className="bg-gradient-to-br from-rose-600 via-rose-500 to-pink-500 p-10 rounded-[3.5rem] text-white shadow-2xl border-8 border-white/10 relative overflow-hidden mx-2 shadow-rose-200">
-                                            <Icon name="party-popper" className="mx-auto mb-2 animate-bounce" size={64} />
-                                            <h3 className="text-2xl font-black mb-1 tracking-[0.4em] uppercase">Love Milestones 🎊</h3>
-                                            <div className="text-[13px] text-rose-50 leading-[2] font-bold">
-                                                <p className="opacity-80">2025/06/29 → Today</p>
-                                                <p className="mt-5 px-2 text-sm text-center">自從在那天決定成為彼此的唯一，到今天...</p>
-                                                <div className="my-8 space-y-1">
-                                                    <p className="text-[11px] opacity-80 font-black tracking-widest">我們已經攜手走過了</p>
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <span className="text-white text-8xl font-black drop-shadow-xl tracking-tighter">{daysDiff}</span>
-                                                        <span className="text-2xl font-black mt-8 tracking-widest">天</span>
-                                                    </div>
-                                                    <div className="mt-8 mb-4 bg-white/20 py-4 px-6 rounded-full inline-block border border-white/30 animate-pulse shadow-lg">
-                                                        <span className="text-xl font-black tracking-[0.2em]">祝我們在一起半年快樂！</span>
-                                                    </div>
-                                                </div>
-                                                <div className="h-px w-16 bg-white/40 mx-auto my-10" />
-                                                <div className="bg-black/10 p-8 rounded-[3rem] backdrop-blur-md border border-white/10 shadow-inner">
-                                                    <Icon name="music" className="mx-auto mb-6 opacity-40 animate-spin-slow" size={24} />
-                                                    <LyricsConfession />
-                                                </div>
-                                            </div>
-                                            <div className="mt-14 flex justify-center gap-6">
-                                                <Icon name="heart" className="fill-current animate-ping opacity-70" size={24} />
-                                                <Icon name="heart" className="fill-current text-white" size={40} />
-                                                <Icon name="heart" className="fill-current animate-ping opacity-70" size={24} />
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="space-y-5 pt-8 px-6 pb-4">
-                                        <button onClick={() => window.location.reload()} className="w-full bg-slate-100 text-slate-600 py-6 rounded-[2rem] font-black text-sm flex items-center justify-center shadow-inner">
-                                            <Icon name="rotate-ccw" className="mr-2" size={20} />不服氣？重新挑戰
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="p-8 bg-slate-50 text-center border-t border-slate-100 shrink-0">
-                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.6em]">Since 2025.06.29 ‧ 名詮 & 子筠 ‧ Eternal Love</p>
-                        </div>
-                    </div>
-                </div>
-            );
+      const handleAnswerSelect = (option) => {
+        if (showRationale) return;
+        const isCorrect = option === pickedQuestions[currentIndex].a;
+        setAnswers(prev => [...prev, { isCorrect }]);
+        setShowRationale(true);
+      };
+
+      const nextQuestion = () => {
+        if (currentIndex < pickedQuestions.length - 1) {
+          setCurrentIndex(prev => prev + 1);
+          setShowRationale(false);
+        } else {
+          setView('result');
+          setTimeout(() => setShowSurprise(true), 600);
         }
+      };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+      const finalScore = answers.filter(a => a.isCorrect).length;
+
+      return (
+        <div className={`safe-screen w-full ${themeClasses.bg} flex flex-col items-center justify-center p-3 transition-colors duration-500`}>
+          <div
+            className={`w-full max-w-md bg-white rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden border ${themeClasses.card}`}
+            style={{ height: "94dvh", maxHeight: "780px" }}
+          >
+
+            {/* ✅ Header：測驗開始變薄 */}
+            <div className={`w-full bg-gradient-to-br ${themeClasses.header} text-white text-center shrink-0 shadow-lg relative ${
+              (view === "quiz" || view === "result") ? "px-8 pt-5 pb-4" : "p-10"
+            }`}>
+              <Icon name="heart" className="mb-2 fill-current mx-auto animate-pulse" size={(view === "quiz" || view === "result") ? 28 : 40}
+ />
+              <h1 className={`${(view === "quiz" || view === "result") ? "text-xl" : "text-2xl"}
+ font-black tracking-[0.2em] mb-1`}>
+                愛情默契大考驗
+              </h1>
+              <div className="h-1 w-12 bg-white/40 mx-auto my-3 rounded-full" />
+              <p className={`${(view === "quiz" || view === "result") ? "hidden" : ""} text-white/90 text-[10px] font-bold tracking-widest uppercase opacity-80`}>
+                Only For Ming Chuan & Tzu Yun
+              </p>
+            </div>
+
+            {/* ✅ 內容區：不滾動 */}
+            <div className={`flex-1 p-6 relative flex flex-col ${
+ 		 view === "result" ? "overflow-y-auto" : "overflow-hidden"
+            }`}>
+
+              {view === 'landing' && (
+                <div className="h-full flex flex-col justify-between text-center text-slate-800">
+                  <div className="space-y-4">
+                    <p className="font-black text-xl tracking-tight">誰要來接受大考驗呢？</p>
+                    <div className="bg-slate-50/80 p-5 rounded-[2rem] border border-slate-100 shadow-inner">
+                      <p className="text-slate-500 text-sm leading-relaxed mb-3">
+                        妳/你 真的了解對方的<br/>工作、遊戲與生活習慣嗎？
+                      </p>
+                      <p className="text-rose-500 font-black text-sm">答全對有獎勵😈答錯一題有懲罰😈</p>
+                      <p className="mt-2 text-[12px] text-slate-500 font-black">請答題個三回阿三回！！！</p>
+
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 px-1">
+                    <button onClick={() => handleStartQuiz('子筠')}
+                      className="w-full flex items-center p-6 rounded-[2.5rem] border-2 border-rose-50 hover:border-rose-400 hover:bg-rose-50 transition-all bg-white shadow-sm">
+                      <div className="w-14 h-14 bg-rose-100 rounded-[1.4rem] flex items-center justify-center mr-4 shadow-sm">
+                        <Icon name="user" className="text-rose-500" size={32} />
+                      </div>
+                      <div className="flex-1 text-left font-black text-lg">我是 子筠</div>
+                      <Icon name="chevron-right" className="text-rose-300" />
+                    </button>
+
+                    <button onClick={() => handleStartQuiz('名詮')}
+                      className="w-full flex items-center p-6 rounded-[2.5rem] border-2 border-blue-50 hover:border-blue-400 hover:bg-blue-50 transition-all bg-white shadow-sm">
+                      <div className="w-14 h-14 bg-blue-100 rounded-[1.4rem] flex items-center justify-center mr-4 shadow-sm">
+                        <Icon name="user" className="text-blue-500" size={32} />
+                      </div>
+                      <div className="flex-1 text-left font-black text-lg">我是 名詮</div>
+                      <Icon name="chevron-right" className="text-blue-300" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {view === 'quiz' && pickedQuestions.length > 0 && (
+                <div className="h-full flex flex-col">
+                  <div className="flex items-center gap-4 px-1">
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                      <div className={`h-full ${themeClasses.progress} transition-all duration-700 ease-out`}
+                        style={{ width: `${((currentIndex + 1) / 15) * 100}%` }} />
+                    </div>
+                    <span className={`text-[12px] font-black tracking-tighter uppercase ${themeClasses.text}`}>
+                      Q {currentIndex + 1} / 15
+                    </span>
+                  </div>
+
+                  <h2 className="mt-5 text-lg font-black text-slate-800 leading-relaxed text-center px-2">
+                    {pickedQuestions[currentIndex].q}
+                  </h2>
+
+                  <div className="mt-4 space-y-3 px-1">
+                    {pickedQuestions[currentIndex].options.map((option, idx) => {
+                      const isCorrect = option === pickedQuestions[currentIndex].a;
+                      const showResult = showRationale;
+
+                      let btnStyle = "w-full py-4 px-4 rounded-[2rem] border-2 text-center transition-all text-[13px] font-bold shadow-sm relative overflow-hidden ";
+                      if (!showResult) {
+                        btnStyle += "border-slate-100 bg-white text-slate-700 active:scale-[0.97] ";
+                        btnStyle += (themeColor === 'blue')
+                          ? "hover:border-blue-300 hover:shadow-md"
+                          : "hover:border-rose-300 hover:shadow-md";
+                      } else {
+                        if (isCorrect) btnStyle += "border-green-500 bg-green-50 text-green-700 ring-4 ring-green-100 z-10 scale-[1.02] shadow-xl";
+                        else btnStyle += "border-slate-50 opacity-20 grayscale scale-95 text-slate-400";
+                      }
+
+                      return (
+                        <button key={idx} disabled={showResult} onClick={() => handleAnswerSelect(option)} className={btnStyle}>
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-auto pt-4">
+                    {showRationale ? (
+                      <div className={`p-5 ${themeColor === 'blue' ? 'bg-blue-50/80' : 'bg-rose-50/80'} backdrop-blur-sm border border-slate-100 rounded-[2.5rem] shadow-inner`}>
+                        <div className="flex flex-col items-center text-center gap-4">
+                          <Icon name="message-circle" className={`${themeClasses.text}`} size={24} />
+                          <p className="text-[12px] text-slate-700 font-bold leading-loose italic">
+                            「{pickedQuestions[currentIndex].rationale}」
+                          </p>
+                          <button onClick={nextQuestion} className="w-full bg-slate-800 text-white py-4 rounded-[1.8rem] font-black flex items-center justify-center text-[14px] shadow-2xl active:scale-95">
+                            {currentIndex === 14 ? "查看最終回報" : "下一題，挑戰繼續"}
+                            <Icon name="chevron-right" className="ml-2" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center text-[11px] text-slate-400 font-bold pt-2">
+                        選一個答案，別慫🙂
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {view === 'result' && (
+                <div className="h-full flex flex-col text-center">
+                  <div className="space-y-6 pt-3">
+                    <div className="inline-block relative mx-auto">
+                      <div className="absolute inset-0 bg-yellow-400 blur-[50px] opacity-20 rounded-full animate-pulse" />
+                      {finalScore === 15
+                        ? <Icon name="sparkles" className="text-yellow-400 w-28 h-28 mx-auto relative z-10 drop-shadow-2xl" />
+                        : <Icon name="skull" className="text-slate-400 w-24 h-24 mx-auto relative z-10 drop-shadow-xl" />
+                      }
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pt-5 z-20">
+                        <span className={`text-4xl font-black ${finalScore === 15 ? 'text-yellow-600' : 'text-slate-600'}`}>{finalScore}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 px-2">
+                      <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+                        {finalScore === 15 ? "100% 完美的默契！" : "噢不，看來還差一點點"}
+                      </h2>
+                      <div className="bg-slate-50 p-5 rounded-[2rem] border border-slate-100 shadow-inner">
+                        <p className="text-base font-black tracking-tight leading-relaxed">
+                          {finalScore === 15
+                            ? <span className="text-rose-600">你太棒了！<br/>準備好好接🥵受🥵獎🥵勵🥵</span>
+                            : <span className="text-slate-700">你完蛋了！<br/>準備好好接🥵受🥵懲🥵罰🥵</span>
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-4">
+                    {showSurprise && (
+                      <div className="bg-gradient-to-br from-rose-600 via-rose-500 to-pink-500 p-6 rounded-[3rem] text-white shadow-2xl border-8 border-white/10 relative overflow-hidden shadow-rose-200">
+                        <Icon name="party-popper" className="mx-auto mb-1 animate-bounce" size={52} />
+                        <h3 className="text-xl font-black mb-1 tracking-[0.35em] uppercase">Love Milestones 🎊</h3>
+
+                        <div className="text-[12px] text-rose-50 leading-[1.8] font-bold">
+                          <p className="opacity-80">2025/06/29 → Today</p>
+                          <p className="mt-3 px-2 text-[12px] text-center">自從在那天決定成為彼此的唯一，到今天...</p>
+
+                          <div className="my-4 space-y-1">
+                            <p className="text-[10px] opacity-80 font-black tracking-widest">我們已經攜手走過了</p>
+                            <div className="flex items-end justify-center gap-2">
+                              <span className="text-white text-6xl font-black drop-shadow-xl tracking-tighter">{daysDiff}</span>
+                              <span className="text-xl font-black tracking-widest pb-1">天</span>
+                            </div>
+
+                            <div className="mt-3 bg-white/20 py-3 px-5 rounded-full inline-block border border-white/30 animate-pulse shadow-lg">
+                              <span className="text-base font-black tracking-[0.2em]">祝我們在一起半年快樂！</span>
+                            </div>
+                          </div>
+
+                          <div className="h-px w-16 bg-white/40 mx-auto my-4" />
+
+                          <div className="bg-black/10 p-5 rounded-[2.5rem] backdrop-blur-md border border-white/10 shadow-inner">
+                            <Icon name="music" className="mx-auto mb-3 opacity-40 animate-spin-slow" size={20} />
+                            <LyricsConfession />
+                          </div>
+
+                          <div className="mt-6 flex justify-center gap-5">
+                            <Icon name="heart" className="fill-current animate-ping opacity-70" size={20} />
+                            <Icon name="heart" className="fill-current text-white" size={32} />
+                            <Icon name="heart" className="fill-current animate-ping opacity-70" size={20} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-3">
+                      <button onClick={() => window.location.reload()}
+                        className="w-full bg-slate-100 text-slate-600 py-4 rounded-[2rem] font-black text-sm flex items-center justify-center shadow-inner active:scale-95">
+                        <Icon name="rotate-ccw" className="mr-2" size={18} />不服氣？重新挑戰
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ✅ Footer：照你要求移除 Since，只留這句 */}
+            <div className="px-6 py-4 bg-slate-50 text-center border-t border-slate-100 shrink-0">
+              <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.6em]">
+                名詮 & 子筠 ‧ Eternal Love
+              </p>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 </body>
 </html>
-
